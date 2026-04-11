@@ -1,4 +1,4 @@
--- [[ 剑杰 · 内部辅助 (极速流畅版) ]]
+-- [[ 剑杰 · 内部辅助 - 核心通用版 ]]
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 
 -- 1. 窗口初始化
@@ -7,7 +7,7 @@ local Window = WindUI:CreateWindow({
     Icon = "rbxassetid://4483362748",
     Author = "剑杰",
     Folder = "JianJieHub",
-    Size = UDim2.fromOffset(580, 480),
+    Size = UDim2.fromOffset(580, 460),
     Transparent = true,
     Theme = "Dark",
 })
@@ -21,17 +21,44 @@ Window:EditOpenButton({
 
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
-local RunService = game:GetService("RunService")
 
 -- ==========================================
--- 项目一：通用功能
+-- 【通用功能项目】 - 暴力核心
 -- ==========================================
-local GeneralTab = Window:Tab({ Title = "通用暴力", Icon = "zap" })
-local VisualTab = Window:Tab({ Title = "视觉透视", Icon = "eye" })
+local GeneralTab = Window:Tab({ Title = "通用功能", Icon = "zap" })
 
--- 1. 速度调节
+-- 1. 自动锁定 (Aimbot)
+_G.Aimbot = false
+GeneralTab:Toggle({
+    Title = "自动锁定 (锁定最近玩家)",
+    Value = false,
+    Callback = function(state)
+        _G.Aimbot = state
+        task.spawn(function()
+            while _G.Aimbot do
+                local closest = nil
+                local dist = math.huge
+                for _, v in pairs(Players:GetPlayers()) do
+                    if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+                        local d = (v.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
+                        if d < dist then
+                            dist = d
+                            closest = v
+                        end
+                    end
+                end
+                if closest then
+                    workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, closest.Character.HumanoidRootPart.Position)
+                end
+                task.wait()
+            end
+        end)
+    end
+})
+
+-- 2. 移动加速 (WalkSpeed)
 GeneralTab:Slider({
-    Title = "移动速度 (WalkSpeed)",
+    Title = "移动速度调节",
     Min = 16,
     Max = 300,
     Default = 16,
@@ -50,38 +77,53 @@ GeneralTab:Slider({
     end
 })
 
--- 2. 自瞄锁定 (锁定最近目标)
-_G.Aimbot = false
+-- 3. 名字透视 (暗白色源码风格)
+_G.NameESP = false
 GeneralTab:Toggle({
-    Title = "自动锁定最近目标",
+    Title = "玩家透视 (暗白名字)",
     Value = false,
     Callback = function(state)
-        _G.Aimbot = state
-        task.spawn(function()
-            while _G.Aimbot do
-                local closest = nil
-                local dist = math.huge
-                for _, v in pairs(game.Players:GetPlayers()) do
-                    if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
-                        local d = (v.Character.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
-                        if d < dist then
-                            dist = d
-                            closest = v
+        _G.NameESP = state
+        if state then
+            task.spawn(function()
+                while _G.NameESP do
+                    for _, v in pairs(Players:GetPlayers()) do
+                        if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("Head") then
+                            if not v.Character.Head:FindFirstChild("JianJieNameTag") then
+                                local bill = Instance.new("BillboardGui", v.Character.Head)
+                                bill.Name = "JianJieNameTag"
+                                bill.AlwaysOnTop = true
+                                bill.Size = UDim2.new(0, 100, 0, 50)
+                                bill.Adornee = v.Character.Head
+                                bill.ExtentsOffset = Vector3.new(0, 3, 0)
+
+                                local label = Instance.new("TextLabel", bill)
+                                label.BackgroundTransparency = 1
+                                label.Size = UDim2.new(1, 0, 1, 0)
+                                label.Text = v.Name
+                                label.TextColor3 = Color3.fromRGB(210, 210, 210) -- 暗白色
+                                label.TextStrokeTransparency = 0.6
+                                label.Font = Enum.Font.GothamBold
+                                label.TextSize = 14
+                            end
                         end
                     end
+                    task.wait(2)
                 end
-                if closest then
-                    workspace.CurrentCamera.CFrame = CFrame.new(workspace.CurrentCamera.CFrame.Position, closest.Character.HumanoidRootPart.Position)
+            end)
+        else
+            for _, v in pairs(Players:GetPlayers()) do
+                if v.Character and v.Character.Head:FindFirstChild("JianJieNameTag") then
+                    v.Character.Head.JianJieNameTag:Destroy()
                 end
-                task.wait()
             end
-        end)
+        end
     end
 })
 
--- 3. 攻击范围 (M1 Reach)
+-- 4. 攻击范围 (M1 Reach)
 GeneralTab:Slider({
-    Title = "攻击距离 (M1)",
+    Title = "攻击范围调节",
     Min = 1,
     Max = 100,
     Default = 5,
@@ -93,7 +135,7 @@ GeneralTab:Slider({
     end
 })
 
--- 4. 碰撞箱旋转 (SpinBot)
+-- 5. 碰撞箱旋转 (SpinBot)
 GeneralTab:Toggle({
     Title = "碰撞箱旋转 (SpinBot)",
     Value = false,
@@ -110,96 +152,9 @@ GeneralTab:Toggle({
     end
 })
 
--- 5. 暗白色名字透视 (源码风格，不卡顿)
-VisualTab:Toggle({
-    Title = "开启玩家名字透视",
-    Value = false,
-    Callback = function(state)
-        _G.NameESP = state
-        if state then
-            task.spawn(function()
-                while _G.NameESP do
-                    for _, v in pairs(game.Players:GetPlayers()) do
-                        if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("Head") then
-                            if not v.Character.Head:FindFirstChild("JianJieNameTag") then
-                                local bill = Instance.new("BillboardGui", v.Character.Head)
-                                bill.Name = "JianJieNameTag"
-                                bill.AlwaysOnTop = true
-                                bill.Size = UDim2.new(0, 100, 0, 50)
-                                bill.Adornee = v.Character.Head
-                                bill.ExtentsOffset = Vector3.new(0, 3, 0)
-
-                                local label = Instance.new("TextLabel", bill)
-                                label.BackgroundTransparency = 1
-                                label.Size = UDim2.new(1, 0, 1, 0)
-                                label.Text = v.Name
-                                -- 使用暗白色 (200, 200, 200)
-                                label.TextColor3 = Color3.fromRGB(200, 200, 200) 
-                                label.TextStrokeTransparency = 0.5 -- 稍微带一点描边更好看
-                                label.Font = Enum.Font.GothamBold
-                                label.TextSize = 14
-                            end
-                        end
-                    end
-                    task.wait(2)
-                end
-            end)
-        else
-            for _, v in pairs(game.Players:GetPlayers()) do
-                if v.Character and v.Character.Head:FindFirstChild("JianJieNameTag") then
-                    v.Character.Head.JianJieNameTag:Destroy()
-                end
-            end
-        end
-    end
+-- 弹窗提示
+Window:Notify({
+    Title = "剑杰 Hub",
+    Content = "通用暴力功能已全部加载完成",
+    Duration = 5
 })
-
--- ==========================================
--- 项目二：最强战场 (TSB) 专项功能
--- ==========================================
-if game.PlaceId == 10449761463 or game.GameId == 3833109746 then
-    local TSBTab = Window:Tab({ Title = "TSB 专属项目", Icon = "swords" })
-
-    TSBTab:Button({
-        Title = "一键执行: 京都连招",
-        Callback = function()
-            local char = LocalPlayer.Character
-            if char and char:FindFirstChild("Communicate") then
-                pcall(function()
-                    local args = {[1] = {["Tool"] = LocalPlayer.Backpack:FindFirstChild("Flowing Water"), ["Goal"] = "Console Move"}}
-                    char.Communicate:FireServer(unpack(args))
-                    task.wait(2.15)
-                    local hrp = char:FindFirstChild("HumanoidRootPart")
-                    if hrp then
-                        local forward = hrp.CFrame.LookVector.Unit
-                        local goalPos = hrp.Position + forward * 20
-                        hrp.CFrame = CFrame.new(goalPos, goalPos + forward)
-                        task.wait(0.1)
-                        hrp.CFrame = hrp.CFrame * CFrame.Angles(0, math.rad(180), 0)
-                    end
-                end)
-            else
-                Window:Notify({Title = "提示", Content = "请先装备流水岩碎拳", Duration = 3})
-            end
-        end
-    })
-
-    TSBTab:Toggle({
-        Title = "去除受击硬直 (No Stun)",
-        Value = false,
-        Callback = function(state)
-            _G.NoStun = state
-            if state then
-                _G.StunLoop = RunService.RenderStepped:Connect(function()
-                    local char = LocalPlayer.Character
-                    if char then
-                        if char:FindFirstChild("Stunned") then char.Stunned:Destroy() end
-                        if char:FindFirstChild("Humanoid") then char.Humanoid.PlatformStand = false end
-                    end
-                end)
-            else
-                if _G.StunLoop then _G.StunLoop:Disconnect() end
-            end
-        end
-    })
-end
