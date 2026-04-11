@@ -1,13 +1,13 @@
--- [[ 剑杰 · 内部辅助 (全能暴力版) ]]
+-- [[ 剑杰 · 内部辅助 (极速流畅版) ]]
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 
--- 窗口初始化
+-- 1. 窗口初始化
 local Window = WindUI:CreateWindow({
     Title = "剑杰 · 内部辅助",
     Icon = "rbxassetid://4483362748",
     Author = "剑杰",
     Folder = "JianJieHub",
-    Size = UDim2.fromOffset(550, 420),
+    Size = UDim2.fromOffset(580, 480),
     Transparent = true,
     Theme = "Dark",
 })
@@ -24,16 +24,16 @@ local LocalPlayer = Players.LocalPlayer
 local RunService = game:GetService("RunService")
 
 -- ==========================================
--- 第一部分：通用暴力功能 (放在最上面)
+-- 项目一：通用功能
 -- ==========================================
 local GeneralTab = Window:Tab({ Title = "通用暴力", Icon = "zap" })
 local VisualTab = Window:Tab({ Title = "视觉透视", Icon = "eye" })
 
--- 1. 跑步加速
+-- 1. 速度调节
 GeneralTab:Slider({
-    Title = "移动速度调节",
+    Title = "移动速度 (WalkSpeed)",
     Min = 16,
-    Max = 200,
+    Max = 300,
     Default = 16,
     Callback = function(v)
         _G.SpeedValue = v
@@ -79,11 +79,11 @@ GeneralTab:Toggle({
     end
 })
 
--- 3. 攻击范围增强
+-- 3. 攻击范围 (M1 Reach)
 GeneralTab:Slider({
-    Title = "攻击范围 (M1 Reach)",
+    Title = "攻击距离 (M1)",
     Min = 1,
-    Max = 50,
+    Max = 100,
     Default = 5,
     Callback = function(v)
         _G.ReachValue = v
@@ -93,34 +93,61 @@ GeneralTab:Slider({
     end
 })
 
--- 4. 玩家透视
-VisualTab:Toggle({
-    Title = "开启玩家 ESP (高亮)",
+-- 4. 碰撞箱旋转 (SpinBot)
+GeneralTab:Toggle({
+    Title = "碰撞箱旋转 (SpinBot)",
     Value = false,
     Callback = function(state)
-        _G.ESPEnabled = state
+        _G.SpinBot = state
+        task.spawn(function()
+            while _G.SpinBot do
+                if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                    LocalPlayer.Character.HumanoidRootPart.CFrame = LocalPlayer.Character.HumanoidRootPart.CFrame * CFrame.Angles(0, math.rad(50), 0)
+                end
+                task.wait()
+            end
+        end)
+    end
+})
+
+-- 5. 暗白色名字透视 (源码风格，不卡顿)
+VisualTab:Toggle({
+    Title = "开启玩家名字透视",
+    Value = false,
+    Callback = function(state)
+        _G.NameESP = state
         if state then
             task.spawn(function()
-                while _G.ESPEnabled do
+                while _G.NameESP do
                     for _, v in pairs(game.Players:GetPlayers()) do
-                        if v ~= LocalPlayer and v.Character then
-                            if not v.Character:FindFirstChild("JianJieESP") then
-                                local highlight = Instance.new("Highlight")
-                                highlight.Name = "JianJieESP"
-                                highlight.FillColor = Color3.fromRGB(255, 0, 0)
-                                highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-                                highlight.FillAlpha = 0.5
-                                highlight.Parent = v.Character
+                        if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("Head") then
+                            if not v.Character.Head:FindFirstChild("JianJieNameTag") then
+                                local bill = Instance.new("BillboardGui", v.Character.Head)
+                                bill.Name = "JianJieNameTag"
+                                bill.AlwaysOnTop = true
+                                bill.Size = UDim2.new(0, 100, 0, 50)
+                                bill.Adornee = v.Character.Head
+                                bill.ExtentsOffset = Vector3.new(0, 3, 0)
+
+                                local label = Instance.new("TextLabel", bill)
+                                label.BackgroundTransparency = 1
+                                label.Size = UDim2.new(1, 0, 1, 0)
+                                label.Text = v.Name
+                                -- 使用暗白色 (200, 200, 200)
+                                label.TextColor3 = Color3.fromRGB(200, 200, 200) 
+                                label.TextStrokeTransparency = 0.5 -- 稍微带一点描边更好看
+                                label.Font = Enum.Font.GothamBold
+                                label.TextSize = 14
                             end
                         end
                     end
-                    task.wait(1)
+                    task.wait(2)
                 end
             end)
         else
             for _, v in pairs(game.Players:GetPlayers()) do
-                if v.Character and v.Character:FindFirstChild("JianJieESP") then
-                    v.Character.JianJieESP:Destroy()
+                if v.Character and v.Character.Head:FindFirstChild("JianJieNameTag") then
+                    v.Character.Head.JianJieNameTag:Destroy()
                 end
             end
         end
@@ -128,12 +155,11 @@ VisualTab:Toggle({
 })
 
 -- ==========================================
--- 第二部分：最强战场 (TSB) 专项功能 (放在下面)
+-- 项目二：最强战场 (TSB) 专项功能
 -- ==========================================
 if game.PlaceId == 10449761463 or game.GameId == 3833109746 then
-    local TSBTab = Window:Tab({ Title = "TSB 专属", Icon = "swords" })
+    local TSBTab = Window:Tab({ Title = "TSB 专属项目", Icon = "swords" })
 
-    -- 自动京都连招
     TSBTab:Button({
         Title = "一键执行: 京都连招",
         Callback = function()
@@ -158,8 +184,6 @@ if game.PlaceId == 10449761463 or game.GameId == 3833109746 then
         end
     })
 
-    -- 无视硬直
-    _G.NoStun = false
     TSBTab:Toggle({
         Title = "去除受击硬直 (No Stun)",
         Value = false,
@@ -178,19 +202,4 @@ if game.PlaceId == 10449761463 or game.GameId == 3833109746 then
             end
         end
     })
-
-    -- 变身垃圾桶
-    TSBTab:Button({
-        Title = "整活：变身垃圾桶",
-        Callback = function()
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/xa4215-eng/jianjiehub/main/trashcan.lua"))()
-        end
-    })
 end
-
--- 加载成功提示
-Window:Notify({
-    Title = "剑杰 Hub 已就绪",
-    Content = "通用暴力与专项功能已加载",
-    Duration = 5
-})
