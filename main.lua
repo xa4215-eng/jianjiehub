@@ -1,7 +1,7 @@
 --[[
     剑杰全功能合集 (Jian Jie Hub) - 终极版
+    整合内容：TSB最强战场、Ohio武器修改、BF自动刷、力量传奇、伊散全源
     作者：剑杰
-    整合内容：BF、俄亥俄州武器修改、力量传奇训练、极速传奇、通用增强
 ]]
 
 local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/454244513/WindUIFix/refs/heads/main/main.lua"))()
@@ -11,50 +11,49 @@ local Window = WindUI:CreateWindow({
     Icon = "rbxassetid://1279310654146347060",
     Author = "作者: 剑杰",
     Folder = "JianJieHub",
-    Size = UDim2.fromOffset(550, 450),
+    Size = UDim2.fromOffset(500, 450),
     Transparent = true,
     Theme = "Dark",
     SideBarWidth = 160,
 })
 
--- ==================== 1. Blox Fruits (BF) ====================
-local BFTab = Window:Tab({ Title = "Blox Fruits", Icon = "sword" })
+-- ==================== 1. TSB 最强战场 (专项逻辑) ====================
+local TSBTab = Window:Tab({ Title = "最强战场", Icon = "swords" })
 
-BFTab:Section({ Title = "自动功能", Opened = true })
-BFTab:Toggle({
-    Title = "自动刷等级 (Auto Farm)",
-    Callback = function(v) 
-        getgenv().AutoFarm = v 
-        if v then loadstring(game:HttpGet("https://github.com/xa4215-eng/jianjiehub/blob/main/BF.lua"))() end
+TSBTab:Section({ Title = "核心功能", Opened = true })
+TSBTab:Button({
+    Title = "加载 TSB 暴力脚本 (自动连招/锁定)",
+    Callback = function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/Souls-dev/yehhevggfwgeggffftewer/refs/heads/main/tsb.txt"))()
     end
 })
-BFTab:Toggle({ Title = "自动点击 (Auto Click)", Callback = function(v) getgenv().AutoClick = v end })
-BFTab:Toggle({ Title = "自动开启宝箱", Callback = function(v) getgenv().AutoChest = v end })
-BFTab:Button({ Title = "远距离命中 (Hitbox)", Callback = function() getgenv().Hitbox = true end })
 
--- ==================== 2. 俄亥俄州 (Ohio) ====================
+-- ==================== 2. 俄亥俄州 (武器修改逻辑) ====================
 local OhioTab = Window:Tab({ Title = "俄亥俄州", Icon = "target" })
 
-OhioTab:Section({ Title = "暴力武器修改", Opened = true })
+OhioTab:Section({ Title = "武器暴力修改", Opened = true })
 OhioTab:Button({
-    Title = "开启：全枪无后坐力 + 无扩散",
+    Title = "开启：全枪无后坐力",
     Callback = function()
         local function removeRecoil()
             pcall(function()
                 local itemSystem = require(game:GetService("ReplicatedStorage").devv).load("v3item")
                 for _, item in pairs(itemSystem.inventory.items) do
                     if item then
-                        item.recoilAdd, item.maxRecoil, item.baseSpread, item.spread = 0, 0, 0, 0
+                        item.recoilAdd = 0
+                        item.maxRecoil = 0
+                        item.baseSpread = 0
                     end
                 end
             end)
         end
-        task.spawn(function() while true do removeRecoil() task.wait(5) end end)
+        task.spawn(function() while true do removeRecoil() task.wait(10) end end)
         WindUI:Notify({Title = "剑杰提醒", Content = "无后坐力已锁定", Duration = 2})
     end
 })
+
 OhioTab:Button({
-    Title = "开启：全枪极速射速",
+    Title = "开启：加特林射速",
     Callback = function()
         pcall(function()
             local itemSystem = require(game:GetService("ReplicatedStorage").devv).load("v3item")
@@ -66,15 +65,15 @@ OhioTab:Button({
 })
 
 -- ==================== 3. 模拟器类 (力量/极速) ====================
-local SimTab = Window:Tab({ Title = "模拟器合集", Icon = "dumbbell" })
+local SimTab = Window:Tab({ Title = "模拟器类", Icon = "dumbbell" })
 
 SimTab:Section({ Title = "力量传奇", Opened = true })
 SimTab:Toggle({
-    Title = "自动俯卧撑",
-    Callback = function(state)
-        getgenv().AutoPushups = state
+    Title = "自动俯卧撑 (Pushups)",
+    Callback = function(v)
+        _G.AutoPush = v
         task.spawn(function()
-            while getgenv().AutoPushups do
+            while _G.AutoPush do
                 game:GetService("ReplicatedStorage").rEvents.pushUpsEvent:FireServer("began")
                 task.wait(0.1)
             end
@@ -84,14 +83,22 @@ SimTab:Toggle({
 
 SimTab:Section({ Title = "极速传奇", Opened = false })
 SimTab:Button({
-    Title = "加载极速传奇独立菜单",
-    Callback = function() loadstring(game:HttpGet("https://github.com/xa4215-eng/jianjiehub/blob/main/%E6%9E%81%E9%80%9F%E4%BC%A0%E5%A5%87.lua"))() end
+    Title = "加载极速传奇功能",
+    Callback = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/xa4215-eng/jianjiehub/main/%E6%9E%81%E9%80%9F%E4%BC%A0%E5%A5%87.lua"))() end
 })
 
--- ==================== 4. 通用增强 (伊散逻辑) ====================
+-- ==================== 4. Blox Fruits (BF) ====================
+local BFTab = Window:Tab({ Title = "Blox Fruits", Icon = "skull" })
+
+BFTab:Button({
+    Title = "加载 BF 综合脚本",
+    Callback = function() loadstring(game:HttpGet("https://raw.githubusercontent.com/xa4215-eng/jianjiehub/main/BF.lua"))() end
+})
+
+-- ==================== 5. 通用功能 (伊散/增强) ====================
 local ToolTab = Window:Tab({ Title = "通用功能", Icon = "zap" })
 
-ToolTab:Section({ Title = "人物属性", Opened = true })
+ToolTab:Section({ Title = "人物物理", Opened = true })
 ToolTab:Slider({
     Title = "行走速度",
     Value = { Min = 16, Max = 500, Default = 16 },
@@ -99,26 +106,37 @@ ToolTab:Slider({
 })
 
 ToolTab:Toggle({
-    Title = "自动刷糖果 (通用事件)",
+    Title = "自动刷糖果 (伊散全源)",
     Callback = function(v)
-        getgenv().CandyFarm = v
-        -- 伊散原始代码逻辑执行处
+        _G.CandyFarm = v
+        task.spawn(function()
+            while _G.CandyFarm do
+                pcall(function()
+                    local root = game.Players.LocalPlayer.Character.HumanoidRootPart
+                    for _, house in pairs(workspace.Houses:GetChildren()) do
+                        local door = house:FindFirstChild("Door") and house.Door:FindFirstChild("DoorInnerTouch")
+                        if door then firetouchinterest(root, door, 0) end
+                    end
+                end)
+                task.wait(0.5)
+            end
+        end)
     end
 })
 
--- ==================== 5. 关于剑杰 ====================
+-- ==================== 6. 关于界面 ====================
 local AboutTab = Window:Tab({ Title = "关于", Icon = "info" })
 AboutTab:Paragraph({
-    Title = "剑杰 Hub 终极版",
-    Desc = "本脚本由 剑杰 汇总制作。\n已集成 BF、Ohio、模拟器等主流游戏功能。\n\n作者：剑杰\n状态：已注入",
+    Title = "剑杰 Hub 终极集成版",
+    Desc = "本脚本由 剑杰 个人汇总。\n所有功能均已适配最新版 UI。",
     Image = "award",
     Color = "Orange"
 })
 
 -- 初始化通知
 WindUI:Notify({
-    Title = "剑杰 Hub 汇总完成",
-    Content = "欢迎使用，尊贵的 剑杰 用户！",
+    Title = "剑杰 Hub",
+    Content = "终极全功能母版已就绪！",
     Icon = "check",
     Duration = 5
 })
