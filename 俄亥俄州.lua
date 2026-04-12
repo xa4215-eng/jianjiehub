@@ -642,7 +642,320 @@ local function attack(plr)
 
         local pred = tRoot.AssemblyLinearVelocity * 0.2
         local cf = tRoot.CFrame * CFrame.new(0, -1, 0) + pred
-        local rcf = tRoot.CFrame:Toconnection:Disconnect()
+        local rcf = tRoot.CFrame:Toend)
+            if ok and id then _G.TargetId = id end
+        end
+
+        if _G.TargetId then
+            pcall(function()
+                InvokeServer("hitSticky", _G.TargetId, tRoot, rcf, cf)
+            end)
+        end
+    end)
+end
+
+RunService.Heartbeat:Connect(function()
+    if _G.AuraEnabled then
+        local target = getTarget()
+        if target then
+            attack(target)
+        end
+        
+        if tick() - lastAmmo > 0.5 then
+            lastAmmo = tick()
+            task.spawn(function()
+                pcall(function() InvokeServer("attemptPurchaseAmmo", "Banana Peel") end)
+            end)
+        end
+    end
+    
+    if _G.BladeAuraEnabled and HumanoidRootPart then
+        for _, plr in ipairs(Players:GetPlayers()) do
+            if plr ~= LocalPlayer then
+                local char = plr.Character
+                local hum = char and char:FindFirstChildOfClass("Humanoid")
+                local head = char and char:FindFirstChild("Head")
+                if head then
+                    local dist = (HumanoidRootPart.Position - head.Position).Magnitude
+                    if hum and hum.Health > 0 and dist < 190 then
+                        executebladekill(plr, head)
+                        break
+                    end
+                end
+            end
+        end
+    end
+end)
+
+local autobank = false
+local bankTeleportCFrame = CFrame.new(1112.12671, 10.1856346, -324.815613)  
+local originalPosition = nil  
+
+local function robBankAndReturn()
+    if not autobank then return end
+    
+    local player = game:GetService("Players").LocalPlayer
+    local character = player.Character
+    if not character then return end
+    
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return end
+    
+    originalPosition = rootPart.CFrame
+    
+    rootPart.CFrame = bankTeleportCFrame
+    task.wait(0.1)
+    
+    local Signal = require(game:GetService("ReplicatedStorage").devv).load("Signal")
+    
+    local waitTime = 0.1
+    local maxWait = 10.0
+    
+    local startTime = tick()
+    while autobank and (tick() - startTime) < maxWait do
+        Signal.FireServer("stealBankCash")
+        task.wait(waitTime)
+    end
+    
+    if autobank and originalPosition then
+        rootPart.CFrame = originalPosition
+        task.wait(0.1)
+    end
+    
+    originalPosition = nil
+end
+
+local bankThread = nil
+
+local function startBankRobberyLoop()
+    if bankThread then return end
+    
+    bankThread = task.spawn(function()
+        while autobank do
+            robBankAndReturn()
+            task.wait(0.5)
+        end
+        bankThread = nil
+    end)
+end
+
+local function stopBankRobberyLoop()
+    if bankThread then
+        task.cancel(bankThread)
+        bankThread = nil
+    end
+end
+
+Tabs.MoneyTab:Toggle({
+    Title = "银行光环",
+    Value = false,
+    Callback = function(state) 
+        autobank = state
+        if autobank then
+            startBankRobberyLoop()
+        else
+            stopBankRobberyLoop()
+        end
+    end
+})
+
+local autoATMCashCombo = false
+
+Tabs.MoneyTab:Toggle({
+    Title = "ATM农场",
+    Default = false,
+    Callback = function(Value)
+        autoATMCashCombo = Value
+        
+        if autoATMCashCombo then
+            local function collectCash()
+                local player = game:GetService("Players").LocalPlayer
+                local cashSize = Vector3.new(2, 0.2499999850988388, 1)
+                
+                for _, part in ipairs(workspace.Game.Entities.CashBundle:GetDescendants()) do
+                    if part:IsA("BasePart") and part.Size == cashSize then
+                        player.Character.HumanoidRootPart.CFrame = part.CFrame
+                        task.wait()
+                    end
+                end
+            end
+            
+            coroutine.wrap(function()
+                while autoATMCashCombo and task.wait() do
+                   
+                    local ATMsFolder = workspace:FindFirstChild("ATMs")
+                    local localPlayer = game:GetService("Players").LocalPlayer
+                    local hasActiveATM = false
+                    
+                    if ATMsFolder and localPlayer.Character then
+                        for _, atm in ipairs(ATMsFolder:GetChildren()) do
+                            if atm:IsA("Model") then
+                                local hp = atm:GetAttribute("health")
+                                if hp ~= 0 then
+                                    hasActiveATM = true
+                                    for _, part in ipairs(atm:GetChildren()) do
+                                        if part.Name == "Main" and part:IsA("BasePart") then
+                                            localPlayer.Character.HumanoidRootPart.CFrame = part.CFrame
+                                            task.wait()
+                                            atm:SetAttribute("health", 0)
+                                            break
+                                        end
+                                    end
+                                    task.wait()
+                                end
+                            end
+                        end
+                    end
+                    
+                    if hasActiveATM then
+                        task.wait(0.1)
+                    else
+                        collectCash()
+                        
+                 
+                        task.wait()
+                    end
+                end
+            end)()
+        end
+    end
+})
+
+local autoCraftEnabled = false
+local autoClaimEnabled = false
+local craftConnection
+
+local Signal = require(game:GetService("ReplicatedStorage").devv).load("Signal")
+
+local function performCrafting()
+    if autoCraftEnabled then
+        Signal.InvokeServer("beginCraft", 'RollieCraft')
+    end
+    
+    if autoClaimEnabled then
+        Signal.InvokeServer("claimCraft", 'RollieCraft')
+    end
+end
+
+game:GetService("RunService").Heartbeat:Connect(function()
+    if autoCraftEnabled or autoClaimEnabled then
+        performCrafting()
+    end
+end)
+
+Tabs.BypassTab:Toggle({
+    Title = "自动制作萝莉",
+    Value = false,
+    Callback = function(state)
+        autoCraftEnabled = state
+    end
+})
+
+Tabs.BypassTab:Toggle({
+    Title = "自动领取萝莉",
+    Value = false,
+    Callback = function(state)
+        autoClaimEnabled = state
+    end
+})
+
+Tabs.BypassTab:Button({
+    Title = "绕过移动经销商",
+    Callback = function()
+local pjyd pjyd=hookmetamethod(game,"__namecall",function(self,...)local args={...}local method=getnamecallmethod()if method=="InvokeServer" and args[2]==true then args[2]=false return pjyd(self,unpack(args))end return pjyd(self,...)end)--
+game:GetService("Players").LocalPlayer:SetAttribute("mobileDealer",true)
+local ReplicatedStorage=game:GetService("ReplicatedStorage")
+local mobileDealer=require(ReplicatedStorage.devv.shared.Indicies.mobileDealer)
+
+for category,items in pairs(mobileDealer)do 
+    for _,item in ipairs(items)do 
+        item.stock=999999 
+    end 
+end
+
+table.insert(mobileDealer.Gun,{itemName="Acid Gun",stock=9999})
+table.insert(mobileDealer.Gun,{itemName="Candy Bucket",stock=9999})
+table.insert(mobileDealer.Gun,{itemName="Golden Rose",stock=9999})
+table.insert(mobileDealer.Gun,{itemName="Black Rose",stock=9999})
+table.insert(mobileDealer.Gun,{itemName="Dollar Balloon",stock=9999})
+table.insert(mobileDealer.Gun,{itemName="Bat Balloon",stock=9999})
+table.insert(mobileDealer.Gun,{itemName="Bunny Balloon",stock=9999})
+table.insert(mobileDealer.Gun,{itemName="Clover Balloon",stock=9999})
+table.insert(mobileDealer.Gun,{itemName="Ghost Balloon",stock=9999})
+table.insert(mobileDealer.Gun,{itemName="Gold Clover Balloon",stock=9999})
+table.insert(mobileDealer.Gun,{itemName="Heart Balloon",stock=9999})
+table.insert(mobileDealer.Gun,{itemName="Skull Balloon",stock=9999})
+table.insert(mobileDealer.Gun,{itemName="Snowflake Balloon",stock=9999})
+table.insert(mobileDealer.Gun,{itemName="Admin AK-47",stock=9999})
+table.insert(mobileDealer.Gun,{itemName="Admin Nuke Launcher",stock=9999})
+table.insert(mobileDealer.Gun,{itemName="Admin RPG",stock=9999})
+table.insert(mobileDealer.Gun,{itemName="Void Gem",stock=9999})
+table.insert(mobileDealer.Gun,{itemName="Pulse Rifle",stock=9999})
+table.insert(mobileDealer.Gun,{itemName="Unusual Money Printer",stock=9999})
+table.insert(mobileDealer.Gun,{itemName="Money Printer",stock=9999})
+table.insert(mobileDealer.Gun,{itemName="Trident",stock=9999})
+table.insert(mobileDealer.Gun,{itemName="NextBot Grenade",stock=9999})
+table.insert(mobileDealer.Gun,{itemName="El Fuego",stock=9999})
+
+    end
+})
+
+Tabs.BypassTab:Button({
+    Title = "绕过高级动作",
+    Callback = function()
+        for _, v in pairs(game:GetService("Players").LocalPlayer.PlayerGui.Emotes.Frame.ScrollingFrame:GetDescendants()) do
+            if v.Name == "Locked" then
+                v.Visible = false
+            end
+        end
+    end
+})
+
+Tabs.BypassTab:Button({
+    Title = "绕过飞行封禁",
+    Callback = function()
+        if game:GetService("ReplicatedStorage"):FindFirstChild("devv"):FindFirstChild("remoteStorage"):FindFirstChild("makeExplosion") then
+            game:GetService("ReplicatedStorage"):FindFirstChild("devv"):FindFirstChild("remoteStorage"):FindFirstChild("makeExplosion"):Destroy()
+        end
+    end
+})
+
+Tabs.BypassTab:Button({
+    Title = "绕过物品栏封禁",
+    Callback = function()
+        if game:GetService("ReplicatedStorage"):FindFirstChild("devv"):FindFirstChild("remoteStorage"):FindFirstChild("makeExplosion") then
+            game:GetService("ReplicatedStorage"):FindFirstChild("devv"):FindFirstChild("remoteStorage"):FindFirstChild("makeExplosion"):Destroy()
+        end
+    end
+})
+
+Tabs.BypassTab:Button({
+    Title = "绕过战斗状态",
+    Callback = function()
+        for _, func in pairs(getgc(true)) do
+            if type(func) == "function" then
+                local info = debug.getinfo(func)
+                if info.name == "isInCombat" or (info.source and info.source:find("combatIndicator")) then
+                    hookfunction(func, function() 
+                        return false 
+                    end)
+                end
+            end
+        end
+    end
+})
+
+Tabs.ProTab:Toggle({
+    Title = "自动买护甲",
+    Default = false,
+    Callback = function(Value)
+        AutoArmor = Value
+        if Value then
+            local heartbeat = game:GetService("RunService").Heartbeat
+            local connection
+            connection = heartbeat:Connect(function()
+                if not AutoArmor then
+                    connection:Disconnect()
                     return
                 end
                 
@@ -901,76 +1214,7 @@ Tabs.MMMTab:Button({
             end
         end
 
-        for _, item in pairs(require(game.ReplicatedStorage.devv.client.Objects.v3item.modules.inventory).items) do
-            if item.name == "Dollar Balloon" then
-                for _, btn in pairs({item.button, item.backpackButton}) do
-                    if btn and btn.resetModelSkin then btn:resetModelSkin() end
-                end
-            end
-        end
-    end
-})
-Tabs.MMMTab:Button({
-    Title = "美化黑玫瑰(需普通气球)",
-    Callback = function()
-        for _, v in pairs(getgc(true)) do
-            if type(v) == "table" and rawget(v, "name") == "Balloon" and rawget(v, "holdableType") == "Balloon" then
-                v.name, v.cost, v.unpurchasable, v.multiplier, v.movespeedAdd, v.cannotDiscard = "Black Rose", 200, true, 0.75, 12, true
-                if v.TPSOffsets then v.TPSOffsets.hold = CFrame.new(0, 0.5, 0) end
-                if v.viewportOffsets and v.viewportOffsets.hotbar then v.viewportOffsets.hotbar.dist = 3 end
-                v.canDrop, v.dropCooldown, v.craft = nil
-                break
-            end
-        end
-
-        for _, item in pairs(require(game.ReplicatedStorage.devv.client.Objects.v3item.modules.inventory).items) do
-            if item.name == "Black Rose" then
-                for _, btn in pairs({item.button, item.backpackButton}) do
-                    if btn and btn.resetModelSkin then btn:resetModelSkin() end
-                end
-            end
-        end
-    end
-})
-
-Tabs.MMMTab:Button({
-Title = "美化Kunai(需普通气球)",
-Callback = function()
-for _, v in pairs(getgc(true)) do
-if type(v) == "table" and rawget(v, "name") == "Balloon" and rawget(v, "holdableType") == "Balloon" then
-v.name = "Kunai"
-v.permanent = true
-v.canDrop = true
-v.dropCooldown = 120
-v.holdableType = "Balloon"
-v.movespeedAdd = 12
-if v.TPSOffsets then
-v.TPSOffsets.hold = CFrame.new(0, -0.3, 0)
-else
-v.TPSOffsets = {hold = CFrame.new(0, -0.3, 0)}
-end
-if v.viewportOffsets then
-if v.viewportOffsets.hotbar then
-v.viewportOffsets.hotbar.dist = 3
-v.viewportOffsets.hotbar.offset = CFrame.new(0, 0, 0)
-v.viewportOffsets.hotbar.rotoffset = CFrame.Angles(0, 1.5707963, 0)
-else
-v.viewportOffsets.hotbar = {dist = 3, offset = CFrame.new(0, 0, 0), rotoffset = CFrame.Angles(0, 1.5707963, 0)}
-end
-if v.viewportOffsets.ammoHUD then
-v.viewportOffsets.ammoHUD.dist = 2
-v.viewportOffsets.ammoHUD.offset = CFrame.new(-0.1, -0.2, 0)
-v.viewportOffsets.ammoHUD.rotoffset = CFrame.Angles(0, -1.3744468, 0)
-else
-v.viewportOffsets.ammoHUD = {dist = 2, offset = CFrame.new(-0.1, -0.2, 0), rotoffset = CFrame.Angles(0, -1.3744468, 0)}
-end
-if v.viewportOffsets.slotButton then
-v.viewportOffsets.slotButton.dist = 1
-v.viewportOffsets.slotButton.offset = CFrame.new(-0.1, -0.2, 0)
-v.viewportOffsets.slotButton.rotoffset = CFrame.Angles(0, -1.5707963, 0)
-else
-v.viewportOffsets.slotButton = {dist = 1, offset = CFrame.new(-0.1, -0.2, 0), rotoffset = CFrame.Angles(0, -1.5707963, 0)}
-end
+        for _, item in pairs(require(game.ReplicatedStorage.devv.client.Objects.v3item.modules.inventory).end
 else
 v.viewportOffsets = {
 hotbar = {dist = 3, offset = CFrame.new(0, 0, 0), rotoffset = CFrame.Angles(0, 1.5707963, 0)},
@@ -1179,4 +1423,122 @@ Tabs.MHTab:Dropdown({
         elseif Value == "绿水晶" then
             skinsec = "Atomic Nature"
         elseif Value == "生物" then
-            skinsec
+            skinsec = "Biohazard"
+        elseif Value == "樱花" then
+            skinsec = "Sakura"
+        elseif Value == "精英" then
+            skinsec = "Elite"
+        elseif Value == "黑樱花" then
+            skinsec = "Death Blossom-Gold"
+        elseif Value == "彩虹激光" then
+            skinsec = "Rainbowlaser"
+        elseif Value == "蓝水晶" then
+            skinsec = "Atomic Water"
+        elseif Value == "紫水晶" then
+            skinsec = "Atomic Amethyst"
+        elseif Value == "红水晶" then
+            skinsec = "Atomic Flame"
+        elseif Value == "零下" then
+            skinsec = "Sub-Zero"
+        elseif Value == "虚空射线" then
+            skinsec = "Void-Ray"
+        elseif Value == "冰冻钻石" then
+            skinsec = "Frozen Diamond"
+        elseif Value == "虚空梦魇" then
+            skinsec = "Void Nightmare"
+        elseif Value == "金雪" then
+            skinsec = "Golden Snow"
+        elseif Value == "爱国者" then
+            skinsec = "Patriot"
+        elseif Value == "MM2" then
+            skinsec = "MM2 Barrett"
+        elseif Value == "声望" then
+            skinsec = "Prestige Barnett"
+        elseif Value == "酷化" then
+            skinsec = "Skin Walter"
+        elseif Value == "蒸汽" then
+            skinsec = "Steampunk"
+        elseif Value == "海盗" then
+            skinsec = "Pirate"
+        elseif Value == "玫瑰" then
+            skinsec = "Rose"
+        elseif Value == "黑玫瑰" then
+            skinsec = "Black Rose"
+        elseif Value == "激光" then
+            skinsec = "Hyperlaser"
+        elseif Value == "烟花" then
+            skinsec = "Firework"
+        elseif Value == "诅咒背瓜" then
+            skinsec = "Cursed Pumpkin"
+        elseif Value == "大炮" then
+            skinsec = "Cannon"
+        elseif Value == "财富" then
+            skinsec = "Firework"
+        elseif Value == "黄金大炮" then
+            skinsec = "Gold Cannon"
+        elseif Value == "四叶草" then
+            skinsec = "Lucky Clover"
+        elseif Value == "自由" then
+            skinsec = "Freedom"
+        elseif Value == "黑曜石" then
+            skinsec = "Obsidian"
+        elseif Value == "赛博朋克" then
+            skinsec = "Cyberpunk"
+        end
+    end
+})
+Tabs.MHTab:Toggle({
+    Title = "全部枪械美化",
+    Value = false,
+    Callback = function(start) 
+        autoskin = start
+        if autoskin then
+            local it = require(game:GetService("ReplicatedStorage").devv).load("v3item").inventory
+            local b1 = require(game:GetService('ReplicatedStorage').devv).load('v3item').inventory.items
+            for i, item in next, b1 do 
+                if item.type == "Gun" then
+                    it.skinUpdate(item.name, skinsec)
+                end
+            end
+        end
+    end
+})
+
+local items = {
+    "Golden Rose", "Black Rose", "Dollar Balloon", "Bat Balloon", "Bunny Balloon", "Clover Balloon",
+    "Ghost Balloon", "Gold Clover Balloon", "Heart Balloon", "Skull Balloon", "Snowflake Balloon",
+    "Admin AK-47", "Admin Nuke Launcher", "Admin RPG", "Void Gem", "Pulse Rifle", "Unusual Money Printer",
+    "Money Printer", "Trident", "NextBot Grenade", "El Fuego", "Kunai", "Spirit Kunai"
+}
+local itemDisplayNames = {
+    ["Golden Rose"] = "金玫瑰", ["Black Rose"] = "黑玫瑰", ["Dollar Balloon"] = "美元气球",
+    ["Bat Balloon"] = "蝙蝠气球", ["Bunny Balloon"] = "兔子气球", ["Clover Balloon"] = "三叶草气球",
+    ["Ghost Balloon"] = "幽灵气球", ["Gold Clover Balloon"] = "金三叶草气球", ["Heart Balloon"] = "爱心气球",
+    ["Skull Balloon"] = "骷髅气球", ["Snowflake Balloon"] = "雪花气球", ["Admin AK-47"] = "管理员黄金AK-47",
+    ["Admin Nuke Launcher"] = "管理员核弹发射器", ["Admin RPG"] = "管理员RPG", ["Void Gem"] = "虚空宝石",
+    ["Pulse Rifle"] = "脉冲步枪", ["Unusual Money Printer"] = "异常印钞机", ["Money Printer"] = "印钞机",
+    ["Trident"] = "三叉戟", ["NextBot Grenade"] = "NextBot手榴弹", ["El Fuego"] = "烈焰喷射器",
+    ["Kunai"] = "苦无", ["Spirit Kunai"] = "灵魂苦无"
+}
+local itemData = {}
+
+itemData["Bat Balloon"] = {name = "Bat Balloon", cost = 0, unpurchasable = true, multiplier = 0.625, holdableType = "Balloon", canDrop = true, dropCooldown = 120, permanent = true, TPSOffsets = {hold = CFrame.new(0, 0, 0)}, viewportOffsets = {hotbar = {dist = 5.5, offset = CFrame.new(0, 0, 0), rotoffset = CFrame.Angles(0, math.pi, 0)}, ammoHUD = {dist = 5, offset = CFrame.new(0, 0, 0), rotoffset = CFrame.Angles(0, 0, 0)}}}
+itemData["Bunny Balloon"] = {name = "Bunny Balloon", cost = 0, unpurchasable = true, multiplier = 0.61, holdableType = "Balloon", canDrop = true, dropCooldown = 120, permanent = true, TPSOffsets = {hold = CFrame.new(0, 0, 0)}, viewportOffsets = {hotbar = {dist = 4.75, offset = CFrame.new(0, -0.25, 0), rotoffset = CFrame.Angles(0, 4.71238898038469, 0)}, ammoHUD = {dist = 5, offset = CFrame.new(0, 0, 0), rotoffset = CFrame.Angles(0, 0, 0)}}}
+itemData["Clover Balloon"] = {name = "Clover Balloon", cost = 200, unpurchasable = true, multiplier = 0.625, holdableType = "Balloon", canDrop = true, dropCooldown = 120, permanent = true, TPSOffsets = {hold = CFrame.new(0, 0, 0)}, viewportOffsets = {hotbar = {dist = 5, offset = CFrame.new(0, 0, 0), rotoffset = CFrame.Angles(0, 0, 0)}, ammoHUD = {dist = 5, offset = CFrame.new(0, 0, 0), rotoffset = CFrame.Angles(0, 0, 0)}}}
+itemData["Ghost Balloon"] = {name = "Ghost Balloon", cost = 0, unpurchasable = true, multiplier = 0.625, holdableType = "Balloon", canDrop = true, dropCooldown = 120, permanent = true, TPSOffsets = {hold = CFrame.new(0, 0, 0)}, viewportOffsets = {hotbar = {dist = 3.5, offset = CFrame.new(0, 0.5, 0), rotoffset = CFrame.Angles(0, math.pi, 0)}, ammoHUD = {dist = 5, offset = CFrame.new(0, 0, 0), rotoffset = CFrame.Angles(0, 0, 0)}}}
+itemData["Gold Clover Balloon"] = {name = "Gold Clover Balloon", cost = 250000, unpurchasable = true, multiplier = 0.6, holdableType = "Balloon", canDrop = true, dropCooldown = 120, permanent = true, TPSOffsets = {hold = CFrame.new(0, 0, 0)}, viewportOffsets = {hotbar = {dist = 5, offset = CFrame.new(0, 0, 0), rotoffset = CFrame.Angles(0, 0, 0)}, ammoHUD = {dist = 5, offset = CFrame.new(0, 0, 0), rotoffset = CFrame.Angles(0, 0, 0)}}}
+itemData["Heart Balloon"] = {name = "Heart Balloon", cost = 200, multiplier = 0.6, holdableType = "Balloon", unpurchasable = true, canDrop = true, dropCooldown = 120, permanent = true, TPSOffsets = {hold = CFrame.new(0, 0, 0)}, viewportOffsets = {hotbar = {dist = 5, offset = CFrame.new(0, 0, 0), rotoffset = CFrame.Angles(0, 0, 0)}, ammoHUD = {dist = 5, offset = CFrame.new(0, 0, 0), rotoffset = CFrame.Angles(0, 0, 0)}}}
+itemData["Skull Balloon"] = {name = "Skull Balloon", cost = 0, unpurchasable = true, multiplier = 0.625, holdableType = "Balloon", canDrop = true, dropCooldown = 120, permanent = true, TPSOffsets = {hold = CFrame.new(0, 0, 0)}, viewportOffsets = {hotbar = {dist = 5.5, offset = CFrame.new(0, 0, 0), rotoffset = CFrame.Angles(0, -270, 0)}, ammoHUD = {dist = 5, offset = CFrame.new(0, 0, 0), rotoffset = CFrame.Angles(0, 0, 0)}}}
+itemData["Snowflake Balloon"] = {name = "Snowflake Balloon", cost = 0, unpurchasable = true, multiplier = 0.625, holdableType = "Balloon", canDrop = true, dropCooldown = 120, permanent = true, TPSOffsets = {hold = CFrame.new(0, 0, 0)}, viewportOffsets = {hotbar = {dist = 5, offset = CFrame.new(0, 0, 0), rotoffset = CFrame.Angles(0, (math.pi/2), 0)}, ammoHUD = {dist = 5, offset = CFrame.new(0, 0, 0), rotoffset = CFrame.Angles(0, 0, 0)}}}
+itemData["Golden Rose"] = {name = "Golden Rose", guid = "golden_rose_"..tostring(tick()), permanent = true, canDrop = true, dropCooldown = 120, multiplier = 0.625, holdableType = "Balloon", movespeedAdd = 5, TPSOffsets = {hold = CFrame.new(0, 0.5, 0)}, viewportOffsets = {hotbar = {dist = 3, offset = CFrame.new(0, 0, 0), rotoffset = CFrame.Angles(0, (math.pi/2), 0)}, ammoHUD = {dist = 2, offset = CFrame.new(-0.1, -0.2, 0), rotoffset = CFrame.Angles(0, -1.3744467859455345, 0)}, slotButton = {dist = 1, offset = CFrame.new(-0.1, -0.2, 0), rotoffset = CFrame.Angles(0, (-math.pi/2), 0)}}}
+itemData["Black Rose"] = {name = "Black Rose", guid = "black_rose_"..tostring(tick()), permanent = true, canDrop = true, dropCooldown = 120, multiplier = 0.75, holdableType = "Balloon", movespeedAdd = 12, TPSOffsets = {hold = CFrame.new(0, 0.5, 0)}, viewportOffsets = {hotbar = {dist = 3, offset = CFrame.new(0, 0, 0), rotoffset = CFrame.Angles(0, (math.pi/2), 0)}, ammoHUD = {dist = 2, offset = CFrame.new(-0.1, -0.2, 0), rotoffset = CFrame.Angles(0, -1.3744467859455345, 0)}, slotButton = {dist = 1, offset = CFrame.new(-0.1, -0.2, 0), rotoffset = CFrame.Angles(0, (-math.pi/2), 0)}}}
+itemData["Dollar Balloon"] = {name = "Dollar Balloon", cost = 100000000000, unpurchasable = true, multiplier = 0.8, holdableType = "Balloon", movespeedAdd = 8, cannotDiscard = true, TPSOffsets = {hold = CFrame.new(0, 0, 0) * CFrame.Angles(0, math.pi, 0)}, viewportOffsets = {hotbar = {dist = 4, offset = CFrame.new(0, 0, 0), rotoffset = CFrame.Angles(0, 0, 0)}, ammoHUD = {dist = 5, offset = CFrame.new(0, 0, 0), rotoffset = CFrame.Angles(0, 0, 0)}}}
+itemData["Admin AK-47"] = {name = "Admin AK-47", modelName = "Gold AK-47", subtype = "AK-47", adminOnly = true, canDrop = false, unpurchasable = true, damage = 10, ammo = 999999999, startAmmo = -1, maxAmmo = -1, firemode = "auto", numProjectiles = 8, fireDebounce = 0.01}
+itemData["Admin Nuke Launcher"] = {name = "Admin Nuke Launcher", modelName = "Nuke Launcher", subtype = "Nuke Launcher", adminOnly = true, canDrop = false, unpurchasable = true, ammo = 99999999, startAmmo = -1, maxAmmo = -1, overrideProjectileProperties = {disableNukeFlash = true}, reloadTime = 0, reloadType = "mag", firemode = "auto", numProjectiles = 1, fireDebounce = 0.2}
+itemData["Admin RPG"] = {canDrop = false, unpurchasable = true, name = "Admin RPG", modelName = "RPG", subtype = "RPG", adminOnly = true, ammo = 99999999, startAmmo = -1, maxAmmo = -1, reloadTime = 0, reloadType = "mag", firemode = "auto", numProjectiles = 1, fireDebounce = 0.02, recoilAdd = 0, maxRecoil = 0, recoilDiminishFactor = 0, recoilFastDiminishFactor = 0}
+itemData["Void Gem"] = {name = "Void Gem", subtype = "gem", maxAmmo = 3, adminLimit = 1, sellPrice = 25000, canDrop = true, dropCooldown = 300}
+itemData["Pulse Rifle"] = {name = "Pulse Rifle", subtype = "Raygun", unpurchasable = true, damage = 22, headshotMultiplier = 1.5, ammo = 50, startAmmo = -1, maxAmmo = -1, reloadTime = 3.5, reloadType = "mag", firemode = "auto", numProjectiles = 1, fireDebounce = 0.04, projectileLength = 20, projectileLifetime = 200, speedDropoff = 0.04, speedMax = 5, baseSpread = 3, baseAimSpread = 0.8, spread = 11, aimSpread = 2.4, recoilAdd = 0.05, maxRecoil = 0.4, recoilDiminishFactor = 0.95, recoilFastDiminishFactor = 0.85}
+itemData["Unusual Money Printer"] = {name = "Unusual Money Printer", cost = 500, ammo = 1, startAmmo = -1, maxAmmo = 1, hint = {computer = "Click to Place", console = "Click to Place"}, canDrop = true, dropCooldown = 600, isConsumable = true, TPSOffsets = {hold = CFrame.new(-0.1, 0, -0.75) * CFrame.Angles(0, 0, 0)}, viewportOffsets = {hotbar = {dist = 5, offset = CFrame.new(0, 0.15, 0), rotoffset = CFrame.Angles(0, (-math.pi/2), 0)}, ammoHUD = {dist = 3.25, offset = CFrame.new(0, 1, 0), rotoffset = CFrame.Angles(0, (math.pi/2), 0)}}}
+itemData["Money Printer"] = {name = "Money Printer", ammo = 1, startAmmo = -1, maxAmmo = 1, adminLimit = 10, hint = {computer = "Click to Place", console = "Click to Place"}, canDrop = true, dropCooldown = 600, isConsumable = true, permanent = true, TPSOffsets = {hold = CFrame.new(-0.1, 0, -0.75) * CFrame.Angles(0, 0, 0)}, viewportOffsets = {hotbar = {dist = 5, offset = CFrame.new(0, 0.15, 0), rotoffset = CFrame.Angles(0, (-math.pi/2), 0)}, ammoHUD = {dist = 3.25, offset = CFrame.new(0, 1, 0), rotoffset = CFrame.Angles(0, (-math.pi/2), 0)}}}
+itemData["Trident"] = {name = "Trident", subtype = "RPG", unpurchasable = true, ammo = 1, startAmmo = 12, maxAmmo = 12, firemode = "semi", numProjectiles = 3, fireDebounce = 0.5, projectileLength = 4, projectileLifetime = 1000, speedDropoff = 0.04, speedMax = 5, baseSpread = 5, baseAimSpread = 1, spread = 10, aimSpread = 6, recoilAdd = 1, maxRecoil = 1.25, recoilDiminishFactor = 0.9, recoilFastDiminishFactor = 0.66}
+itemData["NextBot Grenade"] = {name = "NextBot Grenade", isNade = true, bounceSFX = "nadeBounce", canDrop = true, dropCooldown = 600, thrownOffset = CFrame.Angles(0, (math.pi/2), 0),
